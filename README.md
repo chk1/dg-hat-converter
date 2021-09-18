@@ -2,7 +2,7 @@
 
 ## Python implementation
 
-Requires Python 3 and the `pycryptodome` library. Insert hat file name into `decoder.py` and then run it.
+Requires Python 3 and the `pycryptodome` library. Insert hat file name into `hat-convert.py` and then run it.
 
 ```
 pip install pycryptodome
