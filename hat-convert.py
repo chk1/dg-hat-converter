@@ -5,6 +5,11 @@ import sys
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
+"""
+This Python 3 script will decrypt your .hat files and output a .png and 
+.txt file with the corresponding metadata that was stored in the .hat
+"""
+
 # put file name here
 input_filename = "BigHeadWhite.hat"
 output_filename_base = os.path.splitext(input_filename)[0]

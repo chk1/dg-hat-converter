@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>Hat Converter for Duck Game - .hat to .png</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <link href="hat-converter.css" rel="stylesheet" />
+    </head>
+
+    <body>
+      <div class="flex">
+        <div class="content" id="uploadbox">
+            <h1>Hat Converter for Duck Game</h1>
+            <p><label>Drag or select .hat files here to convert them. <input type="file" name="" id="upload" multiple></label></p>
+            <p>After conversion, click on a hat to download the PNG image, or <a id="downloadZip">save them all as a ZIP file</a>.</p>
+            <div id="out">
+            </div>
+        </div>
+        <div class="info">
+            <p>Hat files are converted in your browser and not sent or stored anywhere.</p>
+            <p>
+              <a href="https://duckgame.fandom.com/wiki/Custom_Hats">Information</a>
+               -
+              <a href="https://github.com">Source code</a>
+            </p>
+        </div>
+      </div>
+    </body>
+    <script src="hat-converter.js"></script>
+    <script src="jszip.min.js"></script>
+</html>
