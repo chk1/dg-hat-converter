@@ -6,20 +6,39 @@ Web interface events and listeners
 // handle file "uploads"
 function handleFiles(files) {
 	const fileList = this.files || files;
-	const promises = []
+	console.log(`Started processing ${fileList.length} files in total.`);
+	const promises = [];
 	for (let i = 0, numFiles = fileList.length; i < numFiles; i++) {
 		promises.push(new Promise((resolve, reject) => {
 			const file = fileList[i];
 			const reader = new FileReader();
 			reader.onload = (result) => {
-				decryptHat(result.target.result).then((r) => resolve(r))
+				decryptHat(result.target.result).then((r) => {
+					const nameSanitized = sanitizeFileName(r.name);
+					const nameSanitizedUnique = makeUniqueFileName(nameSanitized, hats.map(h => h.newFileName));
+					// "name" is the metadata inside the hat file.
+					// "hatFileName" is the original .hat file name.
+					// "newFileName" is the sanitized and made-unique name for the output PNG.
+					const h = { name: r.name, hatFileName: file.name, newFileName: nameSanitizedUnique, blob: r.blob }
+					const alreadyExistingHat = existHat(h, hats);
+					if (alreadyExistingHat) {
+						console.warn(`Hat "${h.name}" with ${h.blob.size} bytes already exists. Skipping duplicate: ${h.hatFileName} (already added from: "${alreadyExistingHat.hatFileName}")`);
+					}
+					else {
+						hats.push(h);
+						createOutputElem(h.name, h.hatFileName, h.newFileName, h.blob);
+						console.log(`Processed file: ${h.hatFileName} -> ${h.name}`);
+					}
+					resolve(r);
+				})
 			}
 			reader.readAsArrayBuffer(file);
 		}))
 	}
 	Promise.all(promises).then((hatList)=>{
-		hats.concat(hatList)
+		console.log(hatList)
 		createZip()
+		console.log(`Finished processing all ${fileList.length} files into ${hats.length} hats.`);
 	})
 }
 const inputElement = document.getElementById("upload");
@@ -99,21 +118,91 @@ function parseMetadata(hatByteArray) {
 				type: "image/png"
 			})
 			
-			let name = nameDecoded
-			if(!name) {
-				name = `unnamed hat ${unnamedCounter}`
+			const name = nameDecoded || `unnamed hat ${unnamedCounter}`
+			if(!nameDecoded) {
+				console.warn(`Hat name is empty. Using default name: ${name}`)
 				unnamedCounter++
 			}
-			createOutputElem(name, blob)
-			hats.push({ name: name, blob: blob })
-			resolve({ name: name, blob: blob })
+			const sanitizedName = sanitizeHatMetadataName(name)
+			const hatInfo = { name: sanitizedName, fileName: name, blob: blob }
+			//hats.push(hatInfo)
+			//console.log(`Hat parsed: ${sanitizedName}`)
+
+			resolve(hatInfo)
 		} catch(e) {
+			console.error(e)
 			reject(e)
 		}
 	})
 }
 
-function createOutputElem(name, blob){
+const invalidFileNameChars = '/\\:*?"<>|';
+
+function makeUniqueFileName(name, existingNames) {
+	let nameUnique = name
+	let counter = 1
+	while(existingNames.some(n => n.toLowerCase() === nameUnique.toLowerCase())) {
+		nameUnique = name +"_" + counter
+		console.warn(`File name "${name}" already exists. Trying "${nameUnique}"...`)
+		counter++
+	}
+	return nameUnique
+}
+
+function sanitizeHatMetadataName(name) {
+	let sanitized = name.trim();
+	return sanitized;
+}
+
+function sanitizeFileName(name, replacement = '_') {
+	let sanitized = name;
+	for (const char of invalidFileNameChars) {
+		sanitized = sanitized.replace(new RegExp("\\" + char, 'g'), replacement);
+	}
+	return sanitized;
+}
+
+function removeHatExtension(name) {
+	return name.replace(/\.hat$/, "")
+}
+
+function existHat(hatInfo, hats) {
+	return hats.find(h => compareHats(h, hatInfo));
+}
+
+function compareHats(hatInfo1, hatInfo2) {
+	return hatInfo1.name === hatInfo2.name 
+		&& hatInfo1.blob.size === hatInfo2.blob.size;
+}
+
+function removeHatDuplicates() {
+	const seen = new Set();
+	for(let i = 0; i < hats.length; i++) {
+		const hat = hats[i];
+		const key = `${hat.name}|${hat.blob.size}`;
+		if (!seen.has(key)) {
+			seen.add(key);
+		}
+		else {
+			hats.splice(i, 1);
+			i--;
+		}
+	}
+}
+
+function getNameDescription(name, hatFileName, newFileName) {
+	let nameDesc = name;
+	const hatFileNameNoExtension = removeHatExtension(hatFileName);
+	if (name?.toLowerCase() !== hatFileNameNoExtension?.toLowerCase()) {
+		nameDesc += ` (${hatFileName})`
+	}
+	if (name?.toLowerCase() !== newFileName?.toLowerCase()) {
+		nameDesc += ` > ${newFileName}`
+	}
+	return nameDesc;
+}
+
+function createOutputElem(name, hatFileName, newFileName, blob){
 	const cont = document.createElement("div")
 	const img = document.createElement("img")
 	const title = document.createElement("div")
@@ -122,14 +211,15 @@ function createOutputElem(name, blob){
 	cont.className = "duck-out"
 	
 	title.className = "title"
-	title.innerText = name
-	title.title = name
+	const nameDesc = getNameDescription(name, hatFileName, newFileName)
+	title.innerText = nameDesc
+	title.title = `Original file name: ${hatFileName}\nHat metadata name: ${name}\nOutput file name: ${newFileName}.png`
 	
 	img.src = URL.createObjectURL(blob)
-	img.alt = `Image for ${name}`
+	img.alt = `Image for ${hatFileName}`
 	
 	a.href = img.src
-	a.download = `${name}.png`
+	a.download = `${newFileName}.png`
 	a.appendChild(img)
 	
 	cont.appendChild(title)
@@ -141,7 +231,7 @@ function createZip(){
 	var zip = new JSZip();
 
 	hats.forEach(hat => {
-		let fn = hat.name
+		let fn = hat.newFileName
 		while(zip.file(`${fn}.png`)){
 			fn = `${fn}_`
 		}
