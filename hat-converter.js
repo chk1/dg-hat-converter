@@ -3,8 +3,11 @@
 Web interface events and listeners
 
 */
+const dlAllLink = document.getElementById("downloadZip")
+
 // handle file "uploads"
 function handleFiles(files) {
+	dlAllLink.hidden = true;
 	const fileList = this.files || files;
 	console.log(`Started processing ${fileList.length} files in total.`);
 	const promises = [];
@@ -39,6 +42,7 @@ function handleFiles(files) {
 		console.log(hatList)
 		createZip()
 		console.log(`Finished processing all ${fileList.length} files into ${hats.length} hats.`);
+		dlAllLink.hidden = false;
 	})
 }
 const inputElement = document.getElementById("upload");
@@ -78,7 +82,6 @@ Hat decoder
 
 */
 const hats = []
-const dlAllLink = document.getElementById("downloadZip")
 let unnamedCounter = 0
 
 // https://github.com/penguinscode/Quackhead/blob/2681ee7b71a57ab235742a24399babfe323b3ac5/quackhead.js#L14
